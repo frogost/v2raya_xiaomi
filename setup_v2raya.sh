@@ -24,6 +24,43 @@ log() {
     esac
 }
 
+startup_v2raya() {
+    # Ожидание инициализации сети и накопителя
+    sleep 30
+
+    # Отключение сетевого ускорителя (критично для tproxy маршрутизации)
+    /etc/init.d/qca-nss-ecm stop >/dev/null 2>&1
+    /etc/init.d/qca-nss-ecm disable >/dev/null 2>&1
+
+    # Отключаем ipv6
+    sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1
+    sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1
+
+    # Копируем службу в системную директорию
+    cp -p -f "$V2RAYA_DIR/etc/init.d/v2raya" /etc/init.d/v2raya
+    
+    # Запускаем службу
+    /etc/init.d/v2raya enable
+    /etc/init.d/v2raya start 
+}
+
+update_v2raya() {
+	echo "=== Запуск обновления V2raya и ядра Xray ==="
+	log "Создание временной папки" "info"
+    mkdir -p "$V2RAYA_DIR/tmp" || { log "Диск защищен от записи!" "err" ; exit 1; }
+	
+    log "Поиск последней версии v2raya в репозитории..." "info"
+	V2RAYA_LATEST_NAME=$(curl -s http://bin.entware.net/aarch64-k3.10/ | grep -o 'v2raya_[^"]*\.ipk' | tail -n 1)
+	
+	if [ -z "$V2RAYA_LATEST_NAME" ]; then
+    	log "Не удалось определить имя последней версии v2raya!" "err"
+    	exit 1
+	fi
+	
+	log "Найдена версия: $V2RAYA_LATEST_NAME, скачиваем..." "info"
+	curl -L -k -s "http://bin.entware.net/aarch64-k3.10/$V2RAYA_LATEST_NAME" -o "$V2RAYA_DIR/tmp/v2raya.ipk"
+}
+
 install_v2raya() {
     echo "=== Запуск установки V2raya ==="
     
@@ -78,7 +115,6 @@ install_v2raya() {
     tar -zxf "$V2RAYA_DIR/tmp/xray.tgz" -C "$V2RAYA_DIR/tmp/"
     
     if [ -f "$V2RAYA_DIR/tmp/xray" ]; then
-        # Перемещаем с переименованием xray -> v2ray в целевую папку бинарников
         mv "$V2RAYA_DIR/tmp/xray" "$V2RAYA_DIR/usr/bin/v2ray"
     fi
 	
@@ -86,7 +122,8 @@ install_v2raya() {
         log "Ошибка: Файл xray не найден внутри архива или не смог переместиться!" "err"
         exit 1
     fi
-    
+
+	log "Удаление временных файлов" "info"
     rm -rf "$V2RAYA_DIR/tmp"
 	
     log "Даем права на выполнение v2raya и ядра" "info" 
@@ -94,10 +131,10 @@ install_v2raya() {
     chmod +x "$V2RAYA_DIR/usr/bin/v2ray"
     
     log "Создаем папки для конфигурации службы" "info"
-    mkdir -p "$V2RAYA_DIR/data/v2raya/etc/init.d" || { log "Не удалось создать /data/v2raya/etc/init.d" "err" ; exit 1; }
+    mkdir -p "$V2RAYA_DIR/etc/init.d" || { log "Не удалось создать /data/v2raya/etc/init.d" "err" ; exit 1; }
     
     log "Настраиваем службу v2raya" "info"
-    cat << 'EOF' > "$V2RAYA_DIR/data/v2raya/etc/init.d/v2raya"
+    cat << 'EOF' > "$V2RAYA_DIR/etc/init.d/v2raya"
 #!/bin/sh /etc/rc.common
 
 USE_PROCD=1
@@ -158,38 +195,7 @@ reload_service() {
 EOF
     
 	log "Даем права службе на выполнение" "info"
-  chmod +x "$STARTUP_DIR/etc/init.d/v2raya"
-	
-  log "Настраиваем скрипт для автозагрузки v2raya" "info"
-  cat << 'EOF' > "$STARTUP_FILE"
-#!/bin/sh
-USB_PATH=$(ls -d /mnt/usb-* 2>/dev/null | head -n 1)
-do_startup() {
-    # Ожидание инициализации сети и накопителя
-    sleep 30
-
-    # Отключение сетевого ускорителя (критично для tproxy/redirect маршрутизации)
-    /etc/init.d/qca-nss-ecm stop >/dev/null 2>&1
-    /etc/init.d/qca-nss-ecm disable >/dev/null 2>&1
-
-    # Отключаем ipv6
-    sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1
-    sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1
-
-    # Копируем службу в системную директорию
-    cp -p -f "$USB_PATH/v2raya/data/v2raya/etc/init.d/v2raya" /etc/init.d/v2raya
-    
-    # Запускаем службу
-    /etc/init.d/v2raya enable
-    /etc/init.d/v2raya start 
-}
-
-do_startup &
-exit 0
-EOF
-    
-    log "Даем права скрипту на выполнение" "info"
-    chmod +x "$STARTUP_FILE"
+  chmod +x "$V2RAYA_DIR/etc/init.d/v2raya"
     
     log "Создание бэкапа firewall" "info"
     cp "$FIREWALL_CONFIG" "$FIREWALL_CONFIG.backup"
