@@ -67,17 +67,28 @@ install_v2raya() {
     fi
     
     log "Скачивание ядра Xray..." "info"
-    curl -L -k -s https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-arm64-v8a.zip -o "$V2RAYA_DIR/tmp/xray.zip"
+    curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/xray.tgz -o "$V2RAYA_DIR/tmp/xray.tgz"
     
-    if [ ! -f "$V2RAYA_DIR/tmp/xray.zip" ]; then
-        log "Не удалось скачать Xray. Проверьте интернет." "err"
+    if [ ! -f "$V2RAYA_DIR/tmp/xray.tgz" ]; then
+        log "Не удалось скачать Xray по ссылке. Проверьте интернет." "err"
         exit 1
     fi
     
-    ??????????
+    log "Распаковка архива Xray..." "info"
+    tar -zxf "$V2RAYA_DIR/tmp/xray.tgz" -C "$V2RAYA_DIR/tmp/"
+    
+    if [ -f "$V2RAYA_DIR/tmp/xray" ]; then
+        # Перемещаем с переименованием xray -> v2ray в целевую папку бинарников
+        mv "$V2RAYA_DIR/tmp/xray" "$V2RAYA_DIR/usr/bin/v2ray"
+    fi
+	
+    if [ ! -f "$V2RAYA_DIR/usr/bin/v2ray" ]; then
+        log "Ошибка: Файл xray не найден внутри архива или не смог переместиться!" "err"
+        exit 1
+    fi
     
     rm -rf "$V2RAYA_DIR/tmp"
-
+	
     log "Даем права на выполнение v2raya и ядра" "info" 
     chmod +x "$V2RAYA_DIR/usr/bin/v2raya"
     chmod +x "$V2RAYA_DIR/usr/bin/v2ray"
