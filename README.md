@@ -60,7 +60,7 @@ curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/setup
 #network(udp) && port(443)->block
 domain(geosite:category-ads)->block
 
-# SOURCE
+# SOURCE TRAFFIC
 #source(192.168.31.15/32)->proxy
 
 # DOMAIN GEO TRAFFIC
