@@ -50,12 +50,9 @@ do_startup() {
         sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1
         
         # Находим флешку, копируем службу и запускаем
-        CURRENT_USB=$(ls -d /mnt/usb-* 2>/dev/null | head -n 1)
-        if [ -n "$CURRENT_USB" ] && [ -f "$CURRENT_USB/v2raya/etc/init.d/v2raya" ]; then
-            cp -p -f "$CURRENT_USB/v2raya/etc/init.d/v2raya" /etc/init.d/v2raya
-            /etc/init.d/v2raya enable
-            /etc/init.d/v2raya start 
-        fi
+        cp -p -f "$STARTUP_DIR/etc/init.d/v2raya" /etc/init.d/v2raya
+        /etc/init.d/v2raya enable
+        /etc/init.d/v2raya start
     } &
 }
 
@@ -271,8 +268,10 @@ EOF
     log "Настройка cron для еженедельного обновления geo-файлов" "info"
     touch "$CRONTAB_FILE"
     sed -i '/runetfreedom\/russia-v2ray-rules-dat/d' "$CRONTAB_FILE"
-    echo "0 5 * * 1 curl -L -k -s -o $V2RAYA_DIR/usr/share/geoip.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geoip.dat" >> "$CRONTAB_FILE"
-    echo "30 5 * * 1 curl -L -k -s -o $V2RAYA_DIR/usr/share/geosite.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geosite.dat" >> "$CRONTAB_FILE"
+    echo "0 5 * * 1 curl -sLo $V2RAYA_DIR/usr/share/geoip.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geoip.dat" >> "$CRONTAB_FILE"
+    echo "30 5 * * 1 curl -sLo $V2RAYA_DIR/usr/share/geosite.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geosite.dat" >> "$CRONTAB_FILE"
+    curl -sLo $V2RAYA_DIR/usr/share/geoip.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geoip.dat
+    curl -sLo $V2RAYA_DIR/usr/share/geosite.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geosite.dat
     /etc/init.d/cron restart 2>/dev/null
     
     log "Копирование скрипта-установщика для автозапуска" "info"
