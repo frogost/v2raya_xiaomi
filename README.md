@@ -15,7 +15,7 @@
 Для запуска процесса установки выполните команду в консоли роутера:
 
 ```bash
-curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/setup_v2raya.sh -o /tmp/setup_v2raya.sh && chmod +x /tmp/setup_v2raya.sh && /tmp/setup_v2raya.sh
+curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/setup_v2raya.sh -o /tmp/setup_v2raya.sh && chmod +x /tmp/setup_v2raya.sh && /tmp/setup_v2raya.sh install
 ```
 ## 📋 Управление и логи
 После установки вам будут доступны следующие возможности:
