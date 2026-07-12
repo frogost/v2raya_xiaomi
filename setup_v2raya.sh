@@ -7,6 +7,7 @@ FINAL_LOG="$V2RAYA_DIR/v2raya_script_final.log"
 STARTUP_DIR="/data/v2raya"
 STARTUP_FILE="$STARTUP_DIR/startup_v2raya.sh"
 FIREWALL_CONFIG="/etc/config/firewall"
+CRONTAB_FILE="/etc/crontabs/root"
 
 log() {
     local msg="$1"
@@ -266,6 +267,13 @@ EOF
     uci set firewall.startup_v2raya.path="$STARTUP_FILE"
     uci set firewall.startup_v2raya.enabled='1'
     uci commit firewall
+
+    log "Настройка cron для еженедельного обновления geo-файлов" "info"
+    touch "$CRONTAB_FILE"
+    sed -i '/runetfreedom\/russia-v2ray-rules-dat/d' "$CRONTAB_FILE"
+    echo "0 5 * * 1 curl -L -k -s -o $V2RAYA_DIR/usr/share/geoip.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geoip.dat" >> "$CRONTAB_FILE"
+    echo "30 5 * * 1 curl -L -k -s -o $V2RAYA_DIR/usr/share/geosite.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geosite.dat" >> "$CRONTAB_FILE"
+    /etc/init.d/cron restart 2>/dev/null
     
     log "Копирование скрипта-установщика для автозапуска" "info"
     cp "$0" "$STARTUP_FILE"
@@ -280,25 +288,32 @@ EOF
 
 uninstall_v2raya() {
     echo "=== Запуск удаления v2raya ==="
+    log "Завершение процессов" "info"
     /etc/init.d/v2raya stop 2>/dev/null
     killall v2raya v2ray 2>/dev/null
     sleep 2
-    
+
+    log "Очистка автозапуска в firewall" "info"
     uci -q delete firewall.startup_v2raya
     uci commit firewall
     
+    log "Удаление задач из cron" "info"
+    if [ -f "$CRONTAB_FILE" ]; then
+        sed -i '/runetfreedom\/russia-v2ray-rules-dat/d' "$CRONTAB_FILE"
+        /etc/init.d/cron restart 2>/dev/null
+    fi
+
+    log "Удаление файлов" "info"
     rm -f /etc/init.d/v2raya
-    rm -rf "$STARTUP_DIR"
     rm -rf "$V2RAYA_DIR"
     
-    # Возвращаем работу ускорителя ECM при удалении
+    log "Возвращаем работу ускорителя" "info"
     /etc/init.d/qca-nss-ecm enable 2>/dev/null
     /etc/init.d/qca-nss-ecm start 2>/dev/null
     
-    log "v2raya полностью удалена" "ok"
+    log "v2raya удалена. Скрипт управления сохранен в $STARTUP_DIR" "ok"
     echo "================================"
 }
-
 # Меню выбора действий
 case "$1" in
     "install")
