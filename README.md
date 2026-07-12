@@ -22,11 +22,11 @@ curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/setup
 -------------------------------------------------------------------------------
 После установки вам будут доступны следующие возможности:
 
-* Установка: /data/v2raya/startup_v2raya.sh install (если вы скачали скрипт setup_v2raya.sh вручную)
-* Обновление v2raya и ядра xray: /data/v2raya/startup_v2raya.sh update
-* Удаление: /data/v2raya/startup_v2raya.sh uninstall
-* Лог установки: /tmp/v2raya_install.log (доступен до перезагрузки)
-* Лог автозапуска: Внутри папки v2raya (например, /mnt/usb-XXXX/v2raya/v2raya_install_final.log)
+* Установка: ```/data/v2raya/startup_v2raya.sh install``` (если вы скачали скрипт setup_v2raya.sh вручную)
+* Обновление v2raya и ядра xray: ```/data/v2raya/startup_v2raya.sh update```
+* Удаление: ```/data/v2raya/startup_v2raya.sh uninstall```
+* Лог установки: ```/tmp/v2raya_install.log``` (доступен до перезагрузки)
+* Лог автозапуска: Внутри папки v2raya (например, ```/mnt/usb-XXXX/v2raya/v2raya_install_final.log```)
 
 -------------------------------------------------------------------------------
 ⚙️ НАСТРОЙКА В ВЕБ-ИНТЕРФЕЙСЕ V2RAYA
