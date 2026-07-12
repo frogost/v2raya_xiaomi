@@ -7,6 +7,8 @@ FINAL_LOG="$V2RAYA_DIR/v2raya_install_final.log"
 STARTUP_DIR="/data/v2raya"
 STARTUP_FILE="/data/v2raya/startup_v2raya.sh"
 FIREWALL_CONFIG="/etc/config/firewall"
+XRAY_TAG=$(curl -k -s -I "https://github.com/frogost/v2raya_xiaomi/releases/latest" | grep -Fi 'Location:' | grep -o 'tag/[^[:space:]\r]*' | cut -d'/' -f2)
+V2RAYA_LATEST_NAME=$(curl -s http://bin.entware.net/aarch64-k3.10/ | grep -o 'v2raya_[^"]*\.ipk' | tail -n 1)
 
 log() {
     local msg="$1"
@@ -46,12 +48,16 @@ startup_v2raya() {
 
 update_v2raya() {
 	echo "=== Запуск обновления V2raya и ядра Xray ==="
+
+	log "Завершение открытых процессов v2raya" "info"
+	/etc/init.d/v2raya stop 2>/dev/null
+    killall v2raya v2ray 2>/dev/null
+    sleep 2
+	
 	log "Создание временной папки" "info"
     mkdir -p "$V2RAYA_DIR/tmp" || { log "Диск защищен от записи!" "err" ; exit 1; }
 	
-    log "Поиск последней версии v2raya в репозитории..." "info"
-	V2RAYA_LATEST_NAME=$(curl -s http://bin.entware.net/aarch64-k3.10/ | grep -o 'v2raya_[^"]*\.ipk' | tail -n 1)
-	
+    log "Поиск последней версии v2raya из релизов..." "info"
 	if [ -z "$V2RAYA_LATEST_NAME" ]; then
     	log "Не удалось определить имя последней версии v2raya!" "err"
     	exit 1
@@ -59,6 +65,54 @@ update_v2raya() {
 	
 	log "Найдена версия: $V2RAYA_LATEST_NAME, скачиваем..." "info"
 	curl -L -k -s "http://bin.entware.net/aarch64-k3.10/$V2RAYA_LATEST_NAME" -o "$V2RAYA_DIR/tmp/v2raya.ipk"
+	
+	if [ ! -f "$V2RAYA_DIR/tmp/v2raya.ipk" ]; then
+        log "Не удалось скачать v2raya. Проверьте интернет." "err"
+        exit 1
+    fi
+	
+	log "Распаковка пакета v2raya..." "info"
+    cd "$V2RAYA_DIR/tmp" || exit 1
+    tar -zxf v2raya.ipk 2>/dev/null || tar -xf v2raya.ipk 2>/dev/null
+    if [ -f "data.tar.gz" ]; then
+        tar -zxf data.tar.gz
+        if [ -f "./opt/bin/v2raya" ]; then
+            mv "./opt/bin/v2raya" "$V2RAYA_DIR/usr/bin/v2raya"
+        fi
+    fi
+	
+	log "v2raya обновлена" "ok"
+	
+	log "Поиск последней версии Xray из релизов..." "info"
+	if [ -z "$XRAY_TAG" ]; then
+    	log "Не удалось определить последний тег релиза GitHub!" "err"
+    	exit 1
+	fi
+	
+	log "Найдена версия: Xray $XRAY_TAG, скачиваем..." "info"
+	curl -L -k -s "https://github.com/frogost/v2raya_xiaomi/releases/download/$XRAY_TAG/Xray-linux-arm64-v8a.tgz" -o "$V2RAYA_DIR/tmp/xray.tgz"
+	
+	log "Распаковка архива Xray..." "info"
+    tar -zxf "$V2RAYA_DIR/tmp/xray.tgz" -C "$V2RAYA_DIR/tmp/"
+    
+    if [ -f "$V2RAYA_DIR/tmp/xray" ]; then
+        mv "$V2RAYA_DIR/tmp/xray" "$V2RAYA_DIR/usr/bin/v2ray"
+    fi
+	
+    if [ ! -f "$V2RAYA_DIR/usr/bin/v2ray" ]; then
+        log "Ошибка: Файл xray не найден внутри архива или не смог переместиться!" "err"
+        exit 1
+    fi
+
+	log "Удаление временных файлов" "info"
+    rm -rf "$V2RAYA_DIR/tmp"
+
+	log "Даем права на выполнение v2raya и ядра" "info" 
+    chmod +x "$V2RAYA_DIR/usr/bin/v2raya"
+    chmod +x "$V2RAYA_DIR/usr/bin/v2ray"
+	
+    log "Обновление V2raya и ядра Xray успешно" "ok"
+    echo "================================"
 }
 
 install_v2raya() {
@@ -75,19 +129,24 @@ install_v2raya() {
     log "Создание временной папки" "info"
     mkdir -p "$V2RAYA_DIR/tmp" || { log "Диск защищен от записи!" "err" ; exit 1; }
     
-    log "Скачивание файла v2raya..." "info"
-    curl -L -k -s http://bin.entware.net/aarch64-k3.10/v2raya_2.3.3-1_aarch64-3.10.ipk -o "$V2RAYA_DIR/tmp/v2raya.ipk"
-    
-    if [ ! -f "$V2RAYA_DIR/tmp/v2raya.ipk" ]; then
-        log "Не удалось скачать v2raya. Проверьте интернет." "err"
-        exit 1
-    fi
-    
     log "Создаем рабочие папки для v2raya" "info" 
     mkdir -p "$V2RAYA_DIR/usr/bin" || { log "Не удалось создать папку usr/bin" "err" ; exit 1; }
     mkdir -p "$V2RAYA_DIR/usr/share" || { log "Не удалось создать папку usr/share" "err" ; exit 1; }
     mkdir -p "$V2RAYA_DIR/config" || { log "Не удалось создать папку config" "err" ; exit 1; }
-    
+
+	log "Скачивание v2raya из релизов..." "info"
+	if [ -z "$V2RAYA_LATEST_NAME" ]; then
+    	log "Не удалось определить имя последней версии v2raya!" "err"
+    	exit 1
+	fi
+	
+	curl -L -k -s "http://bin.entware.net/aarch64-k3.10/$V2RAYA_LATEST_NAME" -o "$V2RAYA_DIR/tmp/v2raya.ipk"
+	
+	if [ ! -f "$V2RAYA_DIR/tmp/v2raya.ipk" ]; then
+        log "Не удалось скачать v2raya. Проверьте интернет." "err"
+        exit 1
+    fi
+	
     log "Распаковка пакета v2raya..." "info"
     cd "$V2RAYA_DIR/tmp" || exit 1
     tar -zxf v2raya.ipk 2>/dev/null || tar -xf v2raya.ipk 2>/dev/null
@@ -103,15 +162,15 @@ install_v2raya() {
         exit 1
     fi
     
-    log "Скачивание ядра Xray..." "info"
-    curl -L -k -s https://raw.githubusercontent.com/frogost/v2raya_xiaomi/main/xray.tgz -o "$V2RAYA_DIR/tmp/xray.tgz"
-    
-    if [ ! -f "$V2RAYA_DIR/tmp/xray.tgz" ]; then
-        log "Не удалось скачать Xray по ссылке. Проверьте интернет." "err"
-        exit 1
-    fi
-    
-    log "Распаковка архива Xray..." "info"
+    log "Скачивание ядра Xray из релизов..." "info"
+	if [ -z "$XRAY_TAG" ]; then
+    	log "Не удалось определить последний тег релиза GitHub!" "err"
+    	exit 1
+	fi
+	
+	curl -L -k -s "https://github.com/frogost/v2raya_xiaomi/releases/download/$XRAY_TAG/Xray-linux-arm64-v8a.tgz" -o "$V2RAYA_DIR/tmp/xray.tgz"
+	
+	log "Распаковка архива Xray..." "info"
     tar -zxf "$V2RAYA_DIR/tmp/xray.tgz" -C "$V2RAYA_DIR/tmp/"
     
     if [ -f "$V2RAYA_DIR/tmp/xray" ]; then
@@ -195,7 +254,7 @@ reload_service() {
 EOF
     
 	log "Даем права службе на выполнение" "info"
-  chmod +x "$V2RAYA_DIR/etc/init.d/v2raya"
+	chmod +x "$V2RAYA_DIR/etc/init.d/v2raya"
     
     log "Создание бэкапа firewall" "info"
     cp "$FIREWALL_CONFIG" "$FIREWALL_CONFIG.backup"
@@ -264,7 +323,7 @@ uninstall_v2raya() {
     /etc/init.d/qca-nss-ecm enable 2>/dev/null
     /etc/init.d/qca-nss-ecm start 2>/dev/null
     
-    echo "[+] v2raya полностью удалена."
+    log "v2raya полностью удалена" "ok"
     echo "================================"
 }
 
