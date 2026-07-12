@@ -3,7 +3,7 @@
 USB_PATH=$(ls -d /mnt/usb-* 2>/dev/null | head -n 1)
 V2RAYA_DIR="$USB_PATH/v2raya"
 LOG_FILE="/tmp/v2raya_install.log"
-FINAL_LOG="$V2RAYA_DIR/v2raya_install_final.log"
+FINAL_LOG="$V2RAYA_DIR/v2raya_script_final.log"
 STARTUP_DIR="/data/v2raya"
 STARTUP_FILE="$STARTUP_DIR/startup_v2raya.sh"
 FIREWALL_CONFIG="/etc/config/firewall"
