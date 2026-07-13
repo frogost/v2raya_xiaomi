@@ -87,7 +87,7 @@ ip(geoip:ru-blocked)->proxy
 default: direct
 ```
 
-Базовая настройка Предотвратить DNS-спуфинг:
+Базовая настройка DNS-спуфинг:
 ```bash
 https://dns.google:443/dns-query->proxy
 https://dns.comss.one:443/dns-query->direct
