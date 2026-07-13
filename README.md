@@ -86,6 +86,13 @@ ip(geoip:ru-blocked)->proxy
 # DEFAULT TRAFFIC
 default: direct
 ```
+
+Базовая настройка Предотвратить DNS-спуфинг:
+```bash
+https://dns.google:443/dns-query->proxy
+https://dns.comss.one:443/dns-query->direct
+```
+
 Полезные ссылки и проверка:
 * Справка по доступным фильтрам и категориям: ```https://github.com/runetfreedom/russia-v2ray-rules-dat```
 * Статья на Хабре для дополнительного ознакомления: ```https://habr.com/ru/articles/773696/```
